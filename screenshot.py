@@ -15,6 +15,13 @@ from PIL import Image
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
+#Flask
+from flask import Flask, render_template, request
+import socket
+
+app = Flask(__name__)
+
+#Screenshot
 ClientInfo = namedtuple(
     "ClientInfo", "full_width full_height window_width window_height"
 )
@@ -209,6 +216,14 @@ def scroll_to(driver, x, y):
 def get_current_pos(driver):
     return driver.execute_script("return [window.scrollX, window.scrollY]")
 
+#Router
+@app.route("/")
+def home():
+    # return capture_full_screenshot("https://www.solodev.com/", "solodev.png")
+    return jsonify({'status': 'api working'})
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=os.getenv('SSPORT'))
 
 if __name__ == "__main__":
     main()

@@ -1,5 +1,4 @@
 FROM python:3.11-slim
-MAINTAINER mokemokechicken@gmail.com
 
 ENV PYTHONUNBUFFERED True
 
@@ -12,12 +11,11 @@ RUN dpkg -i google-chrome-stable_current_amd64.deb; apt-get -fy install
 
 RUN apt-get -y install fonts-ipafont-gothic fonts-ipafont-mincho
 
-ADD requirements.txt /tmp/
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+#App
+RUN mkdir /usr/src/app/
+COPY requirements.txt /usr/src/app/
+COPY screenshot.py /usr/src/app/
+WORKDIR /usr/src/app/
+RUN pip install -r requirements.txt
 
-RUN mkdir -p /tmp/screenshot
-WORKDIR /tmp/screenshot
-ADD screenshot.py /tmp/
-
-ENTRYPOINT ["python", "/tmp/screenshot.py"]
-CMD ["--help"]
+CMD ["python", "screenshot.py"]
