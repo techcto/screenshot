@@ -5,6 +5,7 @@ https://github.com/mrcoles/full-page-screen-capture-chrome-extension/blob/master
 """
 
 import os
+from flask import Flask, request, send_file
 from argparse import ArgumentParser
 from collections import namedtuple
 from io import BytesIO
@@ -15,123 +16,155 @@ from PIL import Image
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
-#Flask
-from flask import Flask, render_template, request
-import socket
-
-app = Flask(__name__)
-
-#Screenshot
 ClientInfo = namedtuple(
     "ClientInfo", "full_width full_height window_width window_height"
 )
 logger = getLogger(__name__)
 logger.setLevel("INFO")
 
+app = Flask(__name__)
 
-def args_parser():
-    parser = ArgumentParser()
-    parser.add_argument("url", help="specify URL")
-    parser.add_argument("filename", help="specify capture image filename")
-    parser.add_argument(
-        "-w", help="specify window size like 1200x800", dest="window_size", type=str
-    )
-    parser.add_argument("--ua", help="specify user-agent", dest="user_agent", type=str)
-    parser.add_argument(
-        "--wait",
-        help="specify wait seconds after scroll",
-        dest="wait",
-        type=float,
-        default=0.2,
-    )
-    parser.add_argument(
-        "--lang",
-        help="set LANG environment variable",
-        dest="lang",
-        type=str,
-        default="ja_JP.UTF-8",
-    )
-    parser.add_argument(
-        "--language",
-        help="set LANGUAGE environment variable",
-        dest="language",
-        type=str,
-        default="ja_JP:ja",
-    )
-    parser.add_argument(
-        "-v", help="set LogLevel to INFO", dest="log_info", action="store_true"
-    )
-    parser.add_argument(
-        "--vv", help="set LogLevel to DEBUG", dest="log_debug", action="store_true"
-    )
-    return parser
+@app.route('/', methods=['GET'])
+def capture_screenshot():
+    url = request.args.get('url')
+    filename = request.args.get('filename', 'screenshot.png')
+    window_size = request.args.get('window_size', '1200x800')
+    user_agent = request.args.get('user_agent', '')
+    wait = float(request.args.get('wait', 0.2))
 
+    window_size = tuple(map(int, window_size.split('x')))
 
-def main():
-    parser = args_parser()
-    args = parser.parse_args()
-    if args.lang:
-        os.environ["LANG"] = args.lang
-    if args.language:
-        os.environ["LANGUAGE"] = args.language
-    if args.window_size:
-        window_size = tuple(int(x) for x in args.window_size.split("x"))
-    else:
-        window_size = (1200, 800)
+    capture_full_screenshot(url, filename, window_size, user_agent, wait)
 
-    if args.log_info:
-        log_level = INFO
-    elif args.log_debug:
-        log_level = DEBUG
-    else:
-        log_level = CRITICAL
-    basicConfig(
-        level=log_level, format="%(asctime)s@%(name)s %(levelname)s # %(message)s"
-    )
+    return send_file(filename, mimetype='image/png')
 
-    capture_full_screenshot(
-        args.url,
-        args.filename,
-        window_size=window_size,
-        user_agent=args.user_agent,
-        wait=args.wait,
-    )
+# def args_parser():
+#     parser = ArgumentParser()
+#     parser.add_argument("url", help="specify URL")
+#     parser.add_argument("filename", help="specify capture image filename")
+#     parser.add_argument(
+#         "-w", help="specify window size like 1200x800", dest="window_size", type=str
+#     )
+#     parser.add_argument("--ua", help="specify user-agent", dest="user_agent", type=str)
+#     parser.add_argument(
+#         "--wait",
+#         help="specify wait seconds after scroll",
+#         dest="wait",
+#         type=float,
+#         default=0.2,
+#     )
+#     parser.add_argument(
+#         "--lang",
+#         help="set LANG environment variable",
+#         dest="lang",
+#         type=str,
+#         default="ja_JP.UTF-8",
+#     )
+#     parser.add_argument(
+#         "--language",
+#         help="set LANGUAGE environment variable",
+#         dest="language",
+#         type=str,
+#         default="ja_JP:ja",
+#     )
+#     parser.add_argument(
+#         "-v", help="set LogLevel to INFO", dest="log_info", action="store_true"
+#     )
+#     parser.add_argument(
+#         "--vv", help="set LogLevel to DEBUG", dest="log_debug", action="store_true"
+#     )
+#     return parser
 
 
-def capture_full_screenshot(
-    url, filename, window_size=None, user_agent=None, wait=None
-):
-    """
+# def main():
+#     parser = args_parser()
+#     args = parser.parse_args()
+#     if args.lang:
+#         os.environ["LANG"] = args.lang
+#     if args.language:
+#         os.environ["LANGUAGE"] = args.language
+#     if args.window_size:
+#         window_size = tuple(int(x) for x in args.window_size.split("x"))
+#     else:
+#         window_size = (1200, 800)
 
-    :param url:
-    :param filename:
-    :param None|tuple window_size: browser window size. tuple of (width, height)
-    :param None|str user_agent:
-    :param None|float wait:
-    :return:
-    """
+#     if args.log_info:
+#         log_level = INFO
+#     elif args.log_debug:
+#         log_level = DEBUG
+#     else:
+#         log_level = CRITICAL
+#     basicConfig(
+#         level=log_level, format="%(asctime)s@%(name)s %(levelname)s # %(message)s"
+#     )
+
+#     capture_full_screenshot(
+#         args.url,
+#         args.filename,
+#         window_size=window_size,
+#         user_agent=args.user_agent,
+#         wait=args.wait,
+#     )
+
+
+# def capture_full_screenshot(
+#     url, filename, window_size=None, user_agent=None, wait=None
+# ):
+#     """
+
+#     :param url:
+#     :param filename:
+#     :param None|tuple window_size: browser window size. tuple of (width, height)
+#     :param None|str user_agent:
+#     :param None|float wait:
+#     :return:
+#     """
+#     options = Options()
+#     options.add_argument("--headless")
+#     options.add_argument("--no-sandbox")
+#     desired_capabilities = dict(acceptInsecureCerts=True)
+#     if user_agent:
+#         options.add_argument(f"user-agent={user_agent}")
+#     if window_size:
+#         options.add_argument(f"window-size={window_size[1]},{window_size[0]}")
+#     driver = webdriver.Chrome(
+#         options=options, desired_capabilities=desired_capabilities
+#     )
+
+#     driver.get(url)
+#     driver.implicitly_wait(5)
+#     prepare_capture(driver)
+#     client_info = get_client_info(driver)
+
+#     ua = driver.execute_script("return navigator.userAgent")
+#     logger.info((client_info, ua))
+#     capture_screen_area(driver, filename, client_info, wait=wait)
+#     driver.close()
+
+def capture_full_screenshot(url, filename, window_size, user_agent, wait):
     options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    desired_capabilities = dict(acceptInsecureCerts=True)
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    desired_capabilities = {'acceptInsecureCerts': True}
+
     if user_agent:
-        options.add_argument(f"user-agent={user_agent}")
+        options.add_argument(f'user-agent={user_agent}')
+
     if window_size:
-        options.add_argument(f"window-size={window_size[1]},{window_size[0]}")
-    driver = webdriver.Chrome(
-        options=options, desired_capabilities=desired_capabilities
-    )
+        options.add_argument(f'window-size={window_size[1]},{window_size[0]}')
 
-    driver.get(url)
-    driver.implicitly_wait(5)
-    prepare_capture(driver)
-    client_info = get_client_info(driver)
+    driver = webdriver.Chrome(options=options, desired_capabilities=desired_capabilities)
 
-    ua = driver.execute_script("return navigator.userAgent")
-    logger.info((client_info, ua))
-    capture_screen_area(driver, filename, client_info, wait=wait)
-    driver.close()
+    try:
+        driver.get(url)
+        driver.implicitly_wait(5)
+        prepare_capture(driver)
+        client_info = get_client_info(driver)
 
+        ua = driver.execute_script('return navigator.userAgent')
+        capture_screen_area(driver, filename, client_info, wait)
+    finally:
+        driver.quit()
 
 def capture_screen_area(
     driver: webdriver.Chrome, filename, client_info: ClientInfo, wait
@@ -216,14 +249,6 @@ def scroll_to(driver, x, y):
 def get_current_pos(driver):
     return driver.execute_script("return [window.scrollX, window.scrollY]")
 
-#Router
-@app.route("/")
-def home():
-    # return capture_full_screenshot("https://www.solodev.com/", "solodev.png")
-    return jsonify({'status': 'api working'})
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=os.getenv('SSPORT'))
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('FLASK_PORT', 5000)), debug=True)
